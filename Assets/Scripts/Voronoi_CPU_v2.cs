@@ -33,7 +33,7 @@ public class Voronoi_CPU_v2 : MonoBehaviour
         }
     }
 
-    public void Start()
+    private void Start()
     {
         n = resolution;
         colors = new Color[seeds];
@@ -47,12 +47,6 @@ public class Voronoi_CPU_v2 : MonoBehaviour
 
         SetSeeds();
         StartCoroutine(CalculateVoronoi());
-        //CalculateVoronoi();
-        PopulateTexture();
-
-        voronoiTexture.Apply();
-        debugMat = GetComponent<MeshRenderer>().material;
-        debugMat.mainTexture = voronoiTexture;
     }
 
     private void SetSeeds()
@@ -70,20 +64,16 @@ public class Voronoi_CPU_v2 : MonoBehaviour
 
     private IEnumerator CalculateVoronoi()
     {
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         k = n / 2;
-        Queue<JFA_DATA> currentQueue = new Queue<JFA_DATA>();
-
-        while( k > 0)
+        while (k > 0)
         {
-            while (JFA_queue.Count > 0)
+            yield return null;
+            int amount = JFA_queue.Count;
+
+            while (amount > 0)
             {
                 JFA_DATA pixel = JFA_queue.Dequeue();
-                currentQueue.Enqueue(pixel);
-            }
-
-            while (currentQueue.Count > 0)
-            {
-                JFA_DATA pixel = currentQueue.Dequeue();
                 Color color = pixel.color;
                 int[] coords = pixel.coords;
                 int[] seed = pixel.seed;
@@ -127,18 +117,11 @@ public class Voronoi_CPU_v2 : MonoBehaviour
                         }
                     }
                 }
-
-                if (false)
-                {
-                    PopulateTexture();
-                    voronoiTexture.Apply();
-                    debugMat.mainTexture = voronoiTexture;
-                    yield return null;
-                }
+                amount--;
             }
             k /= 2;
         }
-        
+        PopulateTexture();
     }
 
     private float CalculateDistance(int[] p1, int[] p2)
@@ -162,5 +145,8 @@ public class Voronoi_CPU_v2 : MonoBehaviour
                 voronoiTexture.SetPixel(width, height, color);
             }
         }
+        voronoiTexture.Apply();
+        debugMat = GetComponent<MeshRenderer>().material;
+        debugMat.mainTexture = voronoiTexture;
     }
 }

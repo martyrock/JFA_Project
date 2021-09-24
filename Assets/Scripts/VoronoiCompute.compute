@@ -20,7 +20,7 @@ void PreProcess (uint3 id : SV_DispatchThreadID)
     Voronoi[pos] = half4((half)id.x, 0.0, 0.0, 1.0);
 }
 
-[numthreads(8, 8, 1)]
+[numthreads(16, 16, 1)]
 void JFA (uint3 id : SV_DispatchThreadID)
 {
    if (Voronoi[id.xy].w > 0.1f){
