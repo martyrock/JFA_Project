@@ -76,11 +76,17 @@ public class Voronoi_GPU : MonoBehaviour
 
         voronoiCompute.SetTexture(jfaKernelHandle, "Voronoi", voronoiTex);
         voronoiCompute.SetBuffer(jfaKernelHandle, "seeds", color_seedsCompute);
+
+        float timer = Time.realtimeSinceStartup;
         for (int k = n / 2; k >= 1; k /= 2)
         {
             voronoiCompute.SetInt("k", k);
             voronoiCompute.Dispatch(jfaKernelHandle, jfa_groupSize, jfa_groupSize, 1);
         }
+        JFA_DATA[] result = new JFA_DATA[seeds];
+        color_seedsCompute.GetData(result); //Force this thread to wait for the compute shader dispatch
+        timer = Time.realtimeSinceStartup - timer;
+        Debug.Log("Time: " + timer);
 
         voronoiCompute.SetTexture(postKernelHandle, "Voronoi", voronoiTex);
         voronoiCompute.SetBuffer(postKernelHandle, "seeds", color_seedsCompute);

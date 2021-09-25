@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,6 +10,7 @@ public class Voronoi_CPU : MonoBehaviour
 
     private Texture2D voronoiTexture;
     private int n;
+    private int k;
     private JFA_DATA[,] textureData;
     private Queue<JFA_DATA> JFA_queue = new Queue<JFA_DATA>();
     public Color[] colors;
@@ -21,39 +21,32 @@ public class Voronoi_CPU : MonoBehaviour
         public Color color;
         public int[] seed;
         public int[] coords;
-        public int k;
         public bool invalid;
 
-        public JFA_DATA(bool isSeed, Color color, int[] coords, int[] seed, int k)
+        public JFA_DATA(bool isSeed, Color color, int[] coords, int[] seed)
         {
             this.isSeed = isSeed;
             this.color = color;
             this.coords = coords;
             this.seed = seed;
-            this.k = k;
             invalid = false;
         }
     }
 
-    public void Start()
+    private void Start()
     {
         n = resolution;
-        //colors = new Color[seeds];
+        colors = new Color[seeds];
 
-        //for (int i = 0; i < colors.Length; i++)
-        //{
-        //    colors[i] = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
-        //}
+        for (int i = 0; i < colors.Length; i++)
+        {
+            colors[i] = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
+        }
 
         textureData = new JFA_DATA[n, n];
 
         SetSeeds();
         StartCoroutine(CalculateVoronoi());
-        //CalculateVoronoi();
-        PopulateTexture();
-
-        voronoiTexture.Apply();
-        debugMat.mainTexture = voronoiTexture;
     }
 
     private void SetSeeds()
@@ -63,7 +56,7 @@ public class Voronoi_CPU : MonoBehaviour
             Color color = colors[i];
             int pixelX = UnityEngine.Random.Range(0, n);
             int pixelY = UnityEngine.Random.Range(0, n);
-            textureData[pixelX, pixelY] = new JFA_DATA(true, color, new int[] { pixelX, pixelY }, new int[] { pixelX, pixelY }, n / 2);
+            textureData[pixelX, pixelY] = new JFA_DATA(true, color, new int[] { pixelX, pixelY }, new int[] { pixelX, pixelY });
             JFA_queue.Enqueue(textureData[pixelX, pixelY]);
         }
     }
@@ -71,66 +64,66 @@ public class Voronoi_CPU : MonoBehaviour
 
     private IEnumerator CalculateVoronoi()
     {
-        while (JFA_queue.Count > 0)
+        yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
+        float timer = Time.realtimeSinceStartup;
+        k = n / 2;
+        while (k > 0)
         {
-            JFA_DATA pixel = JFA_queue.Dequeue();
-            Color color = pixel.color;
-            int k = pixel.k;
-            int[] coords = pixel.coords;
-            int[] seed = pixel.seed;
+            int amount = JFA_queue.Count;
 
-            if (k == 0 || pixel.invalid) continue;
-
-            pixel.k = k / 2;
-            JFA_queue.Enqueue(pixel);
-
-            for (int x = -k; x <= k; x += k)
+            while (amount > 0)
             {
-                for (int y = -k; y <= k; y += k)
+                JFA_DATA pixel = JFA_queue.Dequeue();
+                Color color = pixel.color;
+                int[] coords = pixel.coords;
+                int[] seed = pixel.seed;
+
+                JFA_queue.Enqueue(pixel);
+
+                for (int x = -k; x <= k; x += k)
                 {
-                    int pixelX = coords[0] + x;
-                    int pixelY = coords[1] + y;
-
-                    if (!(x == 0 && y == 0) && pixelX >= 0 && pixelX < n && pixelY >= 0 && pixelY < n)
+                    for (int y = -k; y <= k; y += k)
                     {
-                        if (textureData[pixelX, pixelY] == null)
-                        {
-                            textureData[pixelX, pixelY] = new JFA_DATA(false, color, new int[] { pixelX, pixelY }, seed, k / 2);
-                            JFA_queue.Enqueue(textureData[pixelX, pixelY]);
-                        }
-                        else
-                        {
-                            JFA_DATA old_pixel = textureData[pixelX, pixelY];
+                        int pixelX = coords[0] + x;
+                        int pixelY = coords[1] + y;
 
-                            if (!old_pixel.isSeed && color != old_pixel.color)
+                        if (!(x == 0 && y == 0) && pixelX >= 0 && pixelX < n && pixelY >= 0 && pixelY < n)
+                        {
+                            if (textureData[pixelX, pixelY] == null)
                             {
-                                int[] currentCoords = new int[] { pixelX, pixelY };
-                                int[] otherSeed = old_pixel.seed;
-                                float d1 = CalculateDistance(currentCoords, otherSeed);
-                                float d2 = CalculateDistance(currentCoords, seed);
+                                textureData[pixelX, pixelY] = new JFA_DATA(false, color, new int[] { pixelX, pixelY }, seed);
+                                JFA_queue.Enqueue(textureData[pixelX, pixelY]);
+                            }
+                            else
+                            {
+                                JFA_DATA old_pixel = textureData[pixelX, pixelY];
 
-                                if (d2 < d1)
+                                if (!old_pixel.isSeed && color != old_pixel.color)
                                 {
-                                    textureData[pixelX, pixelY].color = color;
-                                    textureData[pixelX, pixelY].seed = seed;
-                                    //textureData[pixelX, pixelY].k = k/2;
-                                    JFA_queue.Enqueue(textureData[pixelX, pixelY]);
+                                    int[] currentCoords = new int[] { pixelX, pixelY };
+                                    int[] otherSeed = old_pixel.seed;
+                                    float d1 = CalculateDistance(currentCoords, otherSeed);
+                                    float d2 = CalculateDistance(currentCoords, seed);
+
+                                    if (d2 < d1)
+                                    {
+                                        textureData[pixelX, pixelY].color = color;
+                                        textureData[pixelX, pixelY].seed = seed;
+                                        JFA_queue.Enqueue(textureData[pixelX, pixelY]);
+                                    }
                                 }
                             }
-                        }
 
+                        }
                     }
                 }
+                amount--;
             }
-
-            if (false)
-            {
-                PopulateTexture();
-                voronoiTexture.Apply();
-                debugMat.mainTexture = voronoiTexture;
-                yield return null;
-            }
+            k /= 2;
         }
+        timer = Time.realtimeSinceStartup - timer;
+        Debug.Log("Time: " + timer);
+        PopulateTexture();
     }
 
     private float CalculateDistance(int[] p1, int[] p2)
@@ -154,5 +147,8 @@ public class Voronoi_CPU : MonoBehaviour
                 voronoiTexture.SetPixel(width, height, color);
             }
         }
+        voronoiTexture.Apply();
+        debugMat = GetComponent<MeshRenderer>().material;
+        debugMat.mainTexture = voronoiTexture;
     }
 }

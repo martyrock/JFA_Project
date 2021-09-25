@@ -3,9 +3,9 @@
 #pragma kernel PostProcess
 #define GROUP_SIZE 64
 
-struct Seed{
-    float4 color;
-    float2 position;
+struct Seed {
+	float4 color;
+	float2 position;
 };
 
 StructuredBuffer<Seed> seeds;
@@ -14,42 +14,42 @@ uint k;
 uint n;
 
 [numthreads(GROUP_SIZE, 1, 1)]
-void PreProcess (uint3 id : SV_DispatchThreadID)
+void PreProcess(uint3 id : SV_DispatchThreadID)
 {
-    uint2 pos = (uint2)seeds[id.x].position;
-    Voronoi[pos] = half4((half)id.x, 0.0, 0.0, 1.0);
+	uint2 pos = (uint2)seeds[id.x].position;
+	Voronoi[pos] = half4((half)id.x, 0.0, 0.0, 1.0);
 }
 
 [numthreads(16, 16, 1)]
-void JFA (uint3 id : SV_DispatchThreadID)
+void JFA(uint3 id : SV_DispatchThreadID)
 {
-   if (Voronoi[id.xy].w > 0.1f){
-       for(uint i = 0; i < 3; i++){
-           for(uint j = 0; j < 3; j++){
-                uint2 at = uint2(i - 1, j - 1) * k + id.xy;
-                if (any(at < 0) || any(at >= n)) continue;
-                if (Voronoi[at].w <= 0.1f){
-                    Voronoi[at] = Voronoi[id.xy];
-                } 
-                else 
-                {
-                    float2 closest = seeds[Voronoi[id.xy].x].position;
-                    float2 pixel = seeds[Voronoi[at].x].position;
-                    half idDist  = distance(at, closest);
-                    half pixelDist = distance(at, pixel);
-			        if (idDist < pixelDist) {
-				        Voronoi[at] = Voronoi[id.xy];
-			        }
-                }
-           }
-        }
-   }
+	if (Voronoi[id.xy].w > 0.1f) {
+		for (uint i = 0; i < 3; i++) {
+			for (uint j = 0; j < 3; j++) {
+				uint2 at = uint2(i - 1, j - 1) * k + id.xy;
+				if (any(at < 0) || any(at >= n)) continue;
+				if (Voronoi[at].w <= 0.1f) {
+					Voronoi[at] = Voronoi[id.xy];
+				}
+				else
+				{
+					float2 closest = seeds[Voronoi[id.xy].x].position;
+					float2 pixel = seeds[Voronoi[at].x].position;
+					half idDist = distance(at, closest);
+					half pixelDist = distance(at, pixel);
+					if (idDist < pixelDist) {
+						Voronoi[at] = Voronoi[id.xy];
+					}
+				}
+			}
+		}
+	}
 }
 
 [numthreads(8, 8, 1)]
-void PostProcess (uint3 id : SV_DispatchThreadID)
+void PostProcess(uint3 id : SV_DispatchThreadID)
 {
-    uint index = (uint) Voronoi[id.xy].x;
-    Voronoi[id.xy] = seeds[index].color;
+	uint index = (uint) Voronoi[id.xy].x;
+	Voronoi[id.xy] = seeds[index].color;
 }
 
